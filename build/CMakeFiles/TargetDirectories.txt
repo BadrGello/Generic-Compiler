@@ -1,0 +1,5 @@
+D:/Github/Generic-Compiler/build/CMakeFiles/lexer_core.dir
+D:/Github/Generic-Compiler/build/CMakeFiles/test_step0.dir
+D:/Github/Generic-Compiler/build/CMakeFiles/test_step1.dir
+D:/Github/Generic-Compiler/build/CMakeFiles/edit_cache.dir
+D:/Github/Generic-Compiler/build/CMakeFiles/rebuild_cache.dir

@@ -1,0 +1,41 @@
+{
+    "tasks": [
+        {
+            "type": "cppbuild",
+            "label": "C/C++: g++.exe build active file",
+            "command": "C:\\MinGW\\bin\\g++.exe",
+            "args": [
+                "-fdiagnostics-color=always",
+                "-g",
+                "-std=c++17",
+                "${file}",
+                "${workspaceFolder}\\src\\RegexToken.cpp",
+                "${workspaceFolder}\\src\\RuleParser.cpp",
+                "${workspaceFolder}\\src\\NFA.cpp",
+                "${workspaceFolder}\\src\\NFABuilder.cpp",
+                "-I${workspaceFolder}\\include",
+                "-o",
+                "${fileDirname}\\${fileBasenameNoExtension}.exe"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "Compiles active file with all lexer core sources."
+        },
+        {
+            "type": "shell",
+            "label": "CMake: Build all",
+            "command": "cmake --build ${workspaceFolder}\\build",
+            "group": "build",
+            "problemMatcher": []
+        }
+    ],
+    "version": "2.0.0"
+}

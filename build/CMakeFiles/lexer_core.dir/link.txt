@@ -1,0 +1,2 @@
+C:\MinGW\bin\ar.exe qc liblexer_core.a CMakeFiles/lexer_core.dir/src/RegexToken.cpp.obj CMakeFiles/lexer_core.dir/src/RuleParser.cpp.obj CMakeFiles/lexer_core.dir/src/NFA.cpp.obj CMakeFiles/lexer_core.dir/src/NFABuilder.cpp.obj
+C:\MinGW\bin\ranlib.exe liblexer_core.a
