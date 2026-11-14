@@ -1,2 +1,2 @@
-C:\MinGW\bin\ar.exe qc liblexer_core.a CMakeFiles/lexer_core.dir/src/RegexToken.cpp.obj CMakeFiles/lexer_core.dir/src/RuleParser.cpp.obj CMakeFiles/lexer_core.dir/src/NFA.cpp.obj CMakeFiles/lexer_core.dir/src/NFABuilder.cpp.obj
-C:\MinGW\bin\ranlib.exe liblexer_core.a
+/usr/bin/ar qc liblexer_core.a CMakeFiles/lexer_core.dir/src/RegexToken.cpp.o CMakeFiles/lexer_core.dir/src/RuleParser.cpp.o CMakeFiles/lexer_core.dir/src/NFA.cpp.o CMakeFiles/lexer_core.dir/src/NFABuilder.cpp.o CMakeFiles/lexer_core.dir/src/DFA.cpp.o CMakeFiles/lexer_core.dir/src/DFABuilder.cpp.o CMakeFiles/lexer_core.dir/src/DFAMinimizer.cpp.o
+/usr/bin/ranlib liblexer_core.a

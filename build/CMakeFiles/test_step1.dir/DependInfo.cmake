@@ -8,7 +8,8 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "D:/Github/Generic-Compiler/tests/test_step1.cpp" "CMakeFiles/test_step1.dir/tests/test_step1.cpp.obj" "gcc" "CMakeFiles/test_step1.dir/tests/test_step1.cpp.obj.d"
+  "/home/ubntu/Documents/Compiler's_Project/Generic-Compiler/tests/test_step1.cpp" "CMakeFiles/test_step1.dir/tests/test_step1.cpp.o" "gcc" "CMakeFiles/test_step1.dir/tests/test_step1.cpp.o.d"
+  "" "test_step1" "gcc" "CMakeFiles/test_step1.dir/link.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

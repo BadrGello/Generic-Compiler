@@ -8,10 +8,13 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "D:/Github/Generic-Compiler/src/NFA.cpp" "CMakeFiles/lexer_core.dir/src/NFA.cpp.obj" "gcc" "CMakeFiles/lexer_core.dir/src/NFA.cpp.obj.d"
-  "D:/Github/Generic-Compiler/src/NFABuilder.cpp" "CMakeFiles/lexer_core.dir/src/NFABuilder.cpp.obj" "gcc" "CMakeFiles/lexer_core.dir/src/NFABuilder.cpp.obj.d"
-  "D:/Github/Generic-Compiler/src/RegexToken.cpp" "CMakeFiles/lexer_core.dir/src/RegexToken.cpp.obj" "gcc" "CMakeFiles/lexer_core.dir/src/RegexToken.cpp.obj.d"
-  "D:/Github/Generic-Compiler/src/RuleParser.cpp" "CMakeFiles/lexer_core.dir/src/RuleParser.cpp.obj" "gcc" "CMakeFiles/lexer_core.dir/src/RuleParser.cpp.obj.d"
+  "/home/ubntu/Documents/Compiler's_Project/Generic-Compiler/src/DFA.cpp" "CMakeFiles/lexer_core.dir/src/DFA.cpp.o" "gcc" "CMakeFiles/lexer_core.dir/src/DFA.cpp.o.d"
+  "/home/ubntu/Documents/Compiler's_Project/Generic-Compiler/src/DFABuilder.cpp" "CMakeFiles/lexer_core.dir/src/DFABuilder.cpp.o" "gcc" "CMakeFiles/lexer_core.dir/src/DFABuilder.cpp.o.d"
+  "/home/ubntu/Documents/Compiler's_Project/Generic-Compiler/src/DFAMinimizer.cpp" "CMakeFiles/lexer_core.dir/src/DFAMinimizer.cpp.o" "gcc" "CMakeFiles/lexer_core.dir/src/DFAMinimizer.cpp.o.d"
+  "/home/ubntu/Documents/Compiler's_Project/Generic-Compiler/src/NFA.cpp" "CMakeFiles/lexer_core.dir/src/NFA.cpp.o" "gcc" "CMakeFiles/lexer_core.dir/src/NFA.cpp.o.d"
+  "/home/ubntu/Documents/Compiler's_Project/Generic-Compiler/src/NFABuilder.cpp" "CMakeFiles/lexer_core.dir/src/NFABuilder.cpp.o" "gcc" "CMakeFiles/lexer_core.dir/src/NFABuilder.cpp.o.d"
+  "/home/ubntu/Documents/Compiler's_Project/Generic-Compiler/src/RegexToken.cpp" "CMakeFiles/lexer_core.dir/src/RegexToken.cpp.o" "gcc" "CMakeFiles/lexer_core.dir/src/RegexToken.cpp.o.d"
+  "/home/ubntu/Documents/Compiler's_Project/Generic-Compiler/src/RuleParser.cpp" "CMakeFiles/lexer_core.dir/src/RuleParser.cpp.o" "gcc" "CMakeFiles/lexer_core.dir/src/RuleParser.cpp.o.d"
   )
 
 # Targets to which this target links which contain Fortran sources.

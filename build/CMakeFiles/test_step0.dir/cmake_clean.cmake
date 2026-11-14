@@ -1,9 +1,8 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/test_step0.dir/tests/test_step0.cpp.obj"
-  "CMakeFiles/test_step0.dir/tests/test_step0.cpp.obj.d"
-  "libtest_step0.dll.a"
-  "test_step0.exe"
-  "test_step0.exe.manifest"
+  "CMakeFiles/test_step0.dir/link.d"
+  "CMakeFiles/test_step0.dir/tests/test_step0.cpp.o"
+  "CMakeFiles/test_step0.dir/tests/test_step0.cpp.o.d"
+  "test_step0"
   "test_step0.pdb"
 )
 
