@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(include)
 
-# Core lexer library (Steps 0, 1, 2 & 3)
+# Core lexer library (Steps 0, 1, 2, 3 & 4)
 add_library(lexer_core
     src/RegexToken.cpp
     src/RuleParser.cpp
@@ -15,6 +15,8 @@ add_library(lexer_core
     src/DFA.cpp
     src/DFABuilder.cpp
     src/DFAMinimizer.cpp
+    src/SymbolTable.cpp
+    src/LexicalAnalyzer.cpp
 )
 
 # Test executable for Step 0
@@ -32,6 +34,10 @@ target_link_libraries(test_step2 PRIVATE lexer_core)
 # Test executable for Step 3
 add_executable(test_step3 tests/test_step3.cpp)
 target_link_libraries(test_step3 PRIVATE lexer_core)
+
+# Test executable for Step 4
+add_executable(test_step4 tests/test_step4.cpp)
+target_link_libraries(test_step4 PRIVATE lexer_core)
 
 # Copy rules file to build directory for out-of-source execution
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/tests/lexical_rules.txt DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

@@ -1,7 +1,0 @@
-/home/ubntu/Documents/Compiler's_Project/Generic-Compiler/build/CMakeFiles/lexer_core.dir
-/home/ubntu/Documents/Compiler's_Project/Generic-Compiler/build/CMakeFiles/test_step0.dir
-/home/ubntu/Documents/Compiler's_Project/Generic-Compiler/build/CMakeFiles/test_step1.dir
-/home/ubntu/Documents/Compiler's_Project/Generic-Compiler/build/CMakeFiles/test_step2.dir
-/home/ubntu/Documents/Compiler's_Project/Generic-Compiler/build/CMakeFiles/test_step3.dir
-/home/ubntu/Documents/Compiler's_Project/Generic-Compiler/build/CMakeFiles/edit_cache.dir
-/home/ubntu/Documents/Compiler's_Project/Generic-Compiler/build/CMakeFiles/rebuild_cache.dir
