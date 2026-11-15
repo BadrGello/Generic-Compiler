@@ -39,6 +39,12 @@ target_link_libraries(test_step3 PRIVATE lexer_core)
 add_executable(test_step4 tests/test_step4.cpp)
 target_link_libraries(test_step4 PRIVATE lexer_core)
 
-# Copy rules file to build directory for out-of-source execution
+# Main executable for the Lexical Analyzer Generator
+add_executable(lexer_generator src/main.cpp)
+target_link_libraries(lexer_generator PRIVATE lexer_core)
+
+# Copy rules file and sample program to build directory for out-of-source execution
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/tests/lexical_rules.txt DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/tests/lexical_rules.txt DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/tests)
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/tests/sample_program.java DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/tests/sample_program.java DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/tests)
