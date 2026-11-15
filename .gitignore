@@ -5,3 +5,10 @@ bin/
 *.exe
 .vscode/
 .DS_Store
+flex/lex.yy.c
+flex/*.exe
+output_tokens.txt
+minimal_dfa_table.txt
+minimal_dfa_table.csv
+docs/Project_Report.html
+

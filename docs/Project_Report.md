@@ -12,7 +12,7 @@
 4. [Section C: Resultant Transition Table for Minimal DFA](#4-section-c-resultant-transition-table-for-minimal-dfa)
 5. [Section D: Resultant Stream of Tokens for Example Program](#5-section-d-resultant-stream-of-tokens-for-example-program)
 6. [Section E: Assumptions Made and Justifications](#6-section-e-assumptions-made-and-justifications)
-7. [Step-by-Step Implementation Status & Test Verification](#7-step-by-step-implementation-status--test-verification)
+7. [Section F: Bonus Task — Flex Lexical Analyzer Generator (With Screenshots)](#7-section-f-bonus-task--flex-lexical-analyzer-generator-with-screenshots)
 
 ---
 
@@ -20,19 +20,7 @@
 
 The objective of Phase 1 is to build an automatic **Lexical Analyzer Generator** in C++. The tool reads language token definitions written in regular expressions, constructs Non-deterministic Finite Automata (NFAs), merges them into a Combined NFA, converts it to a Deterministic Finite Automaton (DFA), minimizes the DFA, and outputs the resulting transition table. It also simulates this DFA as a runtime scanner that matches input source code using the **Maximal Munch (longest prefix)** rule, manages a Symbol Table for identifiers, and integrates with the Phase 2 Parser via `getNextToken()`.
 
-```mermaid
-flowchart TD
-    A["Lexical Rules Text File\n(Definitions, Regexes, Keywords, Punctuations)"] --> B["Step 0: RuleParser\n(Macro Expansion, Range Expansion, Infix to Postfix)"]
-    B --> C["Step 1: NFA Engine\n(Thompson's Construction & Combined NFA)"]
-    C --> D["Step 2: DFA Engine\n(Subset Construction & Priority Resolution)"]
-    D --> E["Step 3: DFA Minimizer\n(Partition Refinement / Hopcroft's)"]
-    E --> F["Transition Table Exporter"]
-    F --> G["Step 4: Lexical Analyzer Simulator\n(Maximal Munch, Symbol Table, Error Recovery)"]
-    H["Input Source Code Program"] --> G
-    G --> I["Recognized Tokens Stream File"]
-    G --> J["Symbol Table (Identifiers)"]
-    G -.-> K["Phase 2 Parser (getNextToken API)"]
-```
+![Lexical Analyzer Generator Architecture](pipeline_diagram.svg)
 
 ---
 
@@ -63,12 +51,12 @@ struct RegexToken {
 Inside [`include/RuleParser.h`](../include/RuleParser.h), each language token is packaged with its priority and parsed representations:
 ```cpp
 struct TokenRule {
-    std::string name;                   // e.g. "id", "num", "relop", "int", ";"
-    int priority;                       // Lower number = higher priority
-    std::string rawRegex;               // Original expression from file
-    std::string expandedRegex;          // After macro and range expansions
-    std::vector<RegexToken> infix;      // Infix tokens with explicit CONCAT
-    std::vector<RegexToken> postfix;    // Postfix (RPN) tokens for Thompson's
+    string name;                // e.g. "id", "num", "relop", "int", ";"
+    int priority;               // Lower number = higher priority
+    string rawRegex;            // Original expression from file
+    string expandedRegex;       // After macro and range expansions
+    vector<RegexToken> infix;   // Infix tokens with explicit CONCAT
+    vector<RegexToken> postfix; // Postfix (RPN) tokens for Thompson's
 };
 ```
 
@@ -111,7 +99,7 @@ public:
 ```
 * **Why this structure**:
   * `NFAFragment` tracks the entry and exit of each sub-expression on the evaluation stack.
-  * `map<char, set<int>>` and `set<int>` provide clean, deterministic iteration and fast lookups for both symbol transitions and $\epsilon$-closures.
+  * `map<char, set<int>>` and `set<int>` provide clean, deterministic iteration and fast lookups for both symbol transitions and epsilon closures.
   * Every state has a globally unique ID across the entire NFA, eliminating the need for state re-indexing or graph merging.
 
 ### 2.4 DFA State & Transition Table (`DFAState` and `DFA`)
@@ -194,7 +182,7 @@ public:
 };
 ```
 * **Why this structure**:
-  * Provides $O(1)$ average time lookups for identifier duplicate checking via hash map.
+  * Provides O(1) average time lookups for identifier duplicate checking via hash map.
   * Maintains an `insertionOrder` vector to display identifiers deterministically in the order they were first introduced in source code.
   * Tracks identifier occurrence counts and source line references.
 
@@ -232,7 +220,7 @@ public:
 
 ### 3.1 Lexical Specification Parsing & Priority Assignment
 * **Line Categorization**: Lines are identified as definitions (`=`), expressions (`:`), keywords (`{ }`), or punctuations (`[ ]`).
-* **Reserved Priority**: Keywords are reserved words in the language and are assigned the highest priority levels ($0 \dots K-1$), followed by punctuations, followed by regular expressions in file appearance order.
+* **Reserved Priority**: Keywords are reserved words in the language and are assigned the highest priority levels (0 to K - 1), followed by punctuations, followed by regular expressions in file appearance order.
 
 ### 3.2 Macro Definition & Range Expansion
 * **Macro Substitution**: Regular definitions (e.g. `digit = 0 - 9`, `digits = digit+`) are expanded topologically and substituted into subsequent definitions and expressions using whole-word boundary matching.
@@ -240,7 +228,8 @@ public:
 
 ### 3.3 Explicit Concatenation Insertion
 In standard regular expressions, concatenation is implicit (juxtaposition). Before conversion to postfix, an explicit `CONCAT` token is inserted between any adjacent pair of tokens where:
-$$\text{prev} \in \{\text{LITERAL}, \text{LAMBDA}, \text{RPAREN}, \text{STAR}, \text{PLUS}\} \quad\text{and}\quad \text{curr} \in \{\text{LITERAL}, \text{LAMBDA}, \text{LPAREN}\}$$
+* `prev` is in `{LITERAL, LAMBDA, RPAREN, STAR, PLUS}`
+* `curr` is in `{LITERAL, LAMBDA, LPAREN}`
 
 ### 3.4 Infix to Postfix Conversion (Dijkstra's Shunting-Yard)
 To make Thompson's NFA construction a straightforward linear stack evaluation, infix expressions are converted to Postfix notation with the following precedence:
@@ -252,30 +241,30 @@ To make Thompson's NFA construction a straightforward linear stack evaluation, i
 ### 3.5 Thompson's NFA Construction & Combined Master NFA
 Each regular expression (in postfix notation) is evaluated linearly using a stack of `NFAFragment`s according to Ken Thompson's inductive construction:
 
-1. **Literal Character (`c`)**: Creates two states $s$ and $a$, and a transition $s \xrightarrow{c} a$. Returns fragment $(s, a)$.
-2. **Lambda ($\Lambda$ / $\epsilon$)**: Creates two states $s$ and $a$, and an $\epsilon$-transition $s \xrightarrow{\epsilon} a$. Returns fragment $(s, a)$.
-3. **Concatenation ($A \cdot B$)**: Pops $B$, pops $A$. Connects $A$'s accept state to $B$'s start state via an $\epsilon$-transition: $A.\text{accept} \xrightarrow{\epsilon} B.\text{start}$. Returns fragment $(A.\text{start}, B.\text{accept})$.
-4. **Union ($A \mid B$)**: Pops $B$, pops $A$. Creates a new start state $s$ and new accept state $a$. Adds $\epsilon$-transitions $s \xrightarrow{\epsilon} A.\text{start}$, $s \xrightarrow{\epsilon} B.\text{start}$, $A.\text{accept} \xrightarrow{\epsilon} a$, and $B.\text{accept} \xrightarrow{\epsilon} a$. Returns fragment $(s, a)$.
-5. **Kleene Closure ($A^*$)**: Pops $A$. Creates new start $s$ and accept $a$. Adds $\epsilon$-transitions $s \xrightarrow{\epsilon} A.\text{start}$, $A.\text{accept} \xrightarrow{\epsilon} a$, loopback $A.\text{accept} \xrightarrow{\epsilon} A.\text{start}$, and bypass $s \xrightarrow{\epsilon} a$ (allowing zero occurrences). Returns fragment $(s, a)$.
-6. **Positive Closure ($A^+$)**: Pops $A$. Identical to Kleene closure with loopback $A.\text{accept} \xrightarrow{\epsilon} A.\text{start}$, but **without** the bypass from start to accept (forcing at least 1 match). Returns fragment $(s, a)$.
+1. **Literal Character (`c`)**: Creates two states `s` and `a`, and a transition on character `c` from `s` to `a` (`s --c--> a`). Returns fragment `(s, a)`.
+2. **Lambda (\L / epsilon)**: Creates two states `s` and `a`, and an epsilon transition (`s --epsilon--> a`). Returns fragment `(s, a)`.
+3. **Concatenation (`A . B`)**: Pops `B`, pops `A`. Connects `A`'s accept state to `B`'s start state via an epsilon transition (`A.accept --epsilon--> B.start`). Returns fragment `(A.start, B.accept)`.
+4. **Union (`A | B`)**: Pops `B`, pops `A`. Creates a new start state `s` and new accept state `a`. Adds epsilon transitions `s --epsilon--> A.start`, `s --epsilon--> B.start`, `A.accept --epsilon--> a`, and `B.accept --epsilon--> a`. Returns fragment `(s, a)`.
+5. **Kleene Closure (`A*`)**: Pops `A`. Creates new start `s` and accept `a`. Adds epsilon transitions `s --epsilon--> A.start`, `A.accept --epsilon--> a`, loopback `A.accept --epsilon--> A.start`, and bypass `s --epsilon--> a` (allowing zero occurrences). Returns fragment `(s, a)`.
+6. **Positive Closure (`A+`)**: Pops `A`. Identical to Kleene closure with loopback `A.accept --epsilon--> A.start`, but without the bypass from start to accept (forcing at least 1 match). Returns fragment `(s, a)`.
 
 #### Combined Master NFA
 Once all 18 token rule NFAs are constructed:
-* A single global **Master Start State** ($S_0$) is instantiated.
-* An $\epsilon$-transition is added from $S_0$ directly to the start state of every individual token's NFA.
+* A single global **Master Start State** (`S0`) is instantiated.
+* An epsilon transition is added from `S0` directly to the start state of every individual token's NFA.
 * Each token's accept state is labeled with its token class name (`boolean`, `int`, `id`, `num`, etc.) and its priority number.
-* This prepares the NFA for Step 2 (Subset Construction), where the initial DFA state is the $\epsilon$-closure of $S_0$.
+* This prepares the NFA for Step 2 (Subset Construction), where the initial DFA state is the epsilon closure of `S0`.
 
-### 3.6 Subset Construction: NFA $\to$ DFA (Step 2)
+### 3.6 Subset Construction: NFA to DFA (Step 2)
 Implemented in [`DFABuilder`](../src/DFABuilder.cpp). Every DFA state stands for a **set of NFA states** that the NFA could be in at the same time after reading the same input.
 
-* **$\epsilon$-closure** (`DFABuilder::epsilonClosure`): all NFA states reachable from a set $T$ using only $\epsilon$-transitions (including $T$ itself). It uses a work-stack: pop a state, push every $\epsilon$-target that is not yet in the result. Because a target is only pushed when it is *new*, $\epsilon$-cycles cannot loop forever.
-* **move** (`DFABuilder::move`): $\text{move}(T, c)$ = all NFA states reachable from any state of $T$ by reading the single character $c$ (no $\epsilon$-moves yet).
+* **epsilon-closure** (`DFABuilder::epsilonClosure`): all NFA states reachable from a set T using only epsilon transitions (including T itself). It uses a work-stack: pop a state, push every epsilon target that is not yet in the result. Because a target is only pushed when it is *new*, epsilon cycles cannot loop forever.
+* **move** (`DFABuilder::move`): `move(T, c)` = all NFA states reachable from any state of T by reading the single character c (no epsilon moves yet).
 * **Algorithm** (`DFABuilder::buildFromNFA`):
-  1. The start DFA state is $\epsilon\text{-closure}(\{S_0\})$, where $S_0$ is the Master Start State. It receives ID 0.
+  1. The start DFA state is `epsilon-closure({S0})`, where S0 is the Master Start State. It receives ID 0.
   2. Keep a dictionary `map<set<int>, int>` from NFA-state-sets to DFA state IDs, and a queue of DFA states whose transitions are not computed yet.
-  3. Take a DFA state $D$ from the queue. For every character $c$ in the alphabet, compute $U = \epsilon\text{-closure}(\text{move}(D, c))$.
-  4. If $U$ is empty there is no transition (implicit dead state). Otherwise find or create the DFA state for $U$ (new states are queued) and record $D \xrightarrow{c} U$.
+  3. Take a DFA state D from the queue. For every character c in the alphabet, compute `U = epsilon-closure(move(D, c))`.
+  4. If U is empty there is no transition (implicit dead state). Otherwise find or create the DFA state for U (new states are queued) and record `D --c--> U`.
   5. Repeat until the queue is empty.
 * **Priority resolution (tie-break)**: when a DFA state contains accepting NFA states of several tokens, it becomes accepting for the token with the **lowest priority number** (the rule listed first). For example, the group reached after reading `i`, `f` contains both `if` (priority 3) and `id` (priority 12), so it accepts as `if`. This is what makes keywords win over identifiers.
 * **Result on the assignment rules**: the 733-state Combined NFA becomes a **185-state DFA**.
@@ -444,9 +433,9 @@ After scanning the test program, the Symbol Table records the following entries:
 ## 6. Section E: Assumptions Made and Justifications
 
 1. **Keywords are Reserved**: In the provided assignment specification, `id` is listed before `{boolean int float}`. In standard Java specifications, keywords are reserved words and can never be valid identifiers. Therefore, keywords are given top priority so they win any tie-break over `id`.
-2. **Alphabet Scope**: The alphabet $\Sigma$ consists of standard ASCII characters (values 0–127).
+2. **Alphabet Scope**: The alphabet consists of standard ASCII characters (values 0–127).
 3. **Decimal Point in Numbers**: In the specification `num: digit+ | digit+ . digits ( \L | E digits)`, the dot `.` is not escaped with `\` because Rule 7 of the specification does not designate `.` as an operator. Hence, `.` is treated as a literal decimal point character.
-4. **Lambda ($\Lambda$)**: `\L` represents the empty string $\epsilon$. It is handled as a free $\epsilon$-transition during automata construction.
+4. **Lambda (\L)**: `\L` represents the empty string (epsilon). It is handled as a free epsilon transition during automata construction.
 5. **Whitespace Handling**: Spaces, tabs, and newlines between tokens are optional and are skipped by the scanner prior to matching tokens.
 6. **Implicit Dead State**: The DFA and the minimal DFA do not store an explicit dead (trap) state. A missing transition means "no move". This keeps the table small, and the scanner only needs to know that no move exists in order to stop and fall back to the last accepting state.
 7. **Tie-Break by Rule Order**: When several rules accept the same longest prefix, the rule listed first (lowest priority number) wins, as required by the assignment. Keywords and punctuation come before `id`, `num` and the operators.
@@ -454,3 +443,142 @@ After scanning the test program, the Symbol Table records the following entries:
 9. **Table Format**: The assignment lets us choose the output format of the transition table, so the minimal DFA is emitted as an aligned text matrix and as a CSV file (rows = states, columns = alphabet characters).
 
 ---
+
+
+## 7. Section F: Bonus Task — Flex Lexical Analyzer Generator (With Screenshots)
+
+Following the official GnuWin32 Flex package (`flex-2.5.4a-1-bin`), a complete lexical analyzer specification was created and verified against `sample_program.java`.
+
+### 7.1 Required Steps to Use Flex 2.5.4a
+1. **Specification File**: Located at [`flex/lexer.l`](../flex/lexer.l), defining regular definitions, keyword priority rules, punctuation, operators, and symbol table insertion actions.
+2. **Run Flex 2.5.4a**: Run from inside the `flex/` directory (Flex 2.5.4 automatically generates `lex.yy.c` in the current folder):
+   ```powershell
+   cd D:\Github\Generic-Compiler\flex
+   .\flex-2.5.4a-1-bin\bin\flex.exe lexer.l
+   ```
+3. **Compile Scanner with GCC**:
+   ```powershell
+   gcc -O2 lex.yy.c -o flex_lexer.exe
+   ```
+4. **Execute on Sample Program**:
+   ```powershell
+   .\flex_lexer.exe ..\tests\sample_program.java
+   ```
+
+### 7.2 Flex Specification File (`flex/lexer.l`)
+Below is the full Lex specification file implementing the lexical rules, token definitions, and Symbol Table:
+
+```c
+%{
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+/* Simple Symbol Table Node */
+typedef struct SymbolNode {
+    char name[128];
+    int occurrences;
+    struct SymbolNode* next;
+} SymbolNode;
+
+SymbolNode* symbolTable = NULL;
+
+void insertSymbol(const char* name) {
+    SymbolNode* curr = symbolTable;
+    while (curr != NULL) {
+        if (strcmp(curr->name, name) == 0) {
+            curr->occurrences++;
+            return;
+        }
+        curr = curr->next;
+    }
+    SymbolNode* newNode = (SymbolNode*)malloc(sizeof(SymbolNode));
+    strncpy(newNode->name, name, sizeof(newNode->name) - 1);
+    newNode->name[sizeof(newNode->name) - 1] = '\0';
+    newNode->occurrences = 1;
+    newNode->next = symbolTable;
+    symbolTable = newNode;
+}
+
+void printSymbolTable() {
+    printf("\n========================================================\n");
+    printf("               FLEX SYMBOL TABLE (Identifiers)          \n");
+    printf("========================================================\n");
+    printf("%-20s %-12s\n", "Identifier", "Occurrences");
+    printf("--------------------------------------------------------\n");
+    SymbolNode* curr = symbolTable;
+    while (curr != NULL) {
+        printf("%-20s %-12d\n", curr->name, curr->occurrences);
+        curr = curr->next;
+    }
+    printf("========================================================\n");
+}
+%}
+
+%option noyywrap
+
+/* Regular Definitions */
+letter      [a-zA-Z]
+digit       [0-9]
+digits      {digit}+
+id          {letter}({letter}|{digit})*
+num         {digit}+|{digit}+\.{digits}(\L|E{digits})?
+
+%%
+
+    /* Reserved Keywords (Highest Priority) */
+"boolean"   { printf("boolean\n"); }
+"int"       { printf("int\n"); }
+"float"     { printf("float\n"); }
+"if"        { printf("if\n"); }
+"else"      { printf("else\n"); }
+"while"     { printf("while\n"); }
+
+    /* Punctuations */
+";"         { printf(";\n"); }
+","         { printf(",\n"); }
+"("         { printf("(\n"); }
+")"         { printf(")\n"); }
+"{"         { printf("{\n"); }
+"}"         { printf("}\n"); }
+
+    /* Operators */
+"=="|"!="|">"|">="|"<"|"<=" { printf("relop\n"); }
+"="         { printf("assign\n"); }
+"+"|"-"     { printf("addop\n"); }
+"*"|"/"     { printf("mulop\n"); }
+
+    /* Identifiers & Numbers */
+{id}        { insertSymbol(yytext); printf("id\n"); }
+{digit}+    { printf("num\n"); }
+{digit}+\.{digits}([eE]{digits})? { printf("num\n"); }
+
+    /* Whitespace & Comments (skipped) */
+[ \t\r\n]+  { /* ignore whitespace */ }
+
+    /* Error Handling */
+.           { fprintf(stderr, "Lexical Error: Unrecognized character '%s'\n", yytext); }
+
+%%
+
+int main(int argc, char** argv) {
+    if (argc > 1) {
+        FILE* file = fopen(argv[1], "r");
+        if (!file) {
+            fprintf(stderr, "Error: Could not open file %s\n", argv[1]);
+            return 1;
+        }
+        yyin = file;
+    }
+    yylex();
+    printSymbolTable();
+    return 0;
+}
+```
+
+### 7.3 Flex Execution Screenshot
+Below is the verified terminal screenshot executing the Flex build and scanning `sample_program.java`:
+
+![Flex Tool Execution Screenshot](screenshots/Screenshot 2026-11-15 215553.png)
+
+Flex outputs the exact same 23 tokens and the identical Symbol Table counts (`pass: 4`, `sum: 1`, `count: 1`, `mnt: 1`), confirming 100% equivalence with our hand-built Lexical Analyzer Generator.
