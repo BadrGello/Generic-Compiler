@@ -161,8 +161,70 @@ public:
   * `getNextState`, `isAccepting` and `getAcceptingToken` are the only functions the Step 4 scanner needs to simulate the machine.
 * **Transition table**: conceptually a 2D mapping `table[stateId][inputChar] -> nextStateId`. It is stored sparsely in each state's `transitions` map and exported as a dense matrix (rows = states, columns = alphabet) by `printTransitionTable`, `saveTransitionTableText` and `saveTransitionTableCSV`.
 
-### 2.5 Symbol Table (For Step 4)
-* Hash table / map (`unordered_map<string, SymbolEntry>`) storing identifier lexemes, token types, line numbers, and attribute values.
+### 2.5 Token & Symbol Table Data Structures (`Token`, `SymbolEntry`, `SymbolTable`)
+Inside [`include/Token.h`](../include/Token.h) and [`include/SymbolTable.h`](../include/SymbolTable.h):
+```cpp
+struct Token {
+    string tokenClass;     // e.g. "int", "id", "num", ";", "relop", "EOF"
+    string attributeValue; // Matched lexeme value (e.g. "sum", "10", "!=")
+    int line = 1;
+    int column = 1;
+
+    bool isEOF() const { return tokenClass == "EOF"; }
+};
+
+struct SymbolEntry {
+    string name;       // Identifier name/lexeme
+    string tokenClass; // Token type ("id")
+    int firstLine = 1; // First line where identifier appeared
+    int occurrences = 1;
+};
+
+class SymbolTable {
+private:
+    unordered_map<string, SymbolEntry> table;
+    vector<string> insertionOrder;
+
+public:
+    bool insert(const string& name, const string& tokenClass = "id", int line = 1);
+    bool contains(const string& name) const;
+    const SymbolEntry* get(const string& name) const;
+    vector<SymbolEntry> getAllEntries() const;
+    void print(ostream& out) const;
+};
+```
+* **Why this structure**:
+  * Provides $O(1)$ average time lookups for identifier duplicate checking via hash map.
+  * Maintains an `insertionOrder` vector to display identifiers deterministically in the order they were first introduced in source code.
+  * Tracks identifier occurrence counts and source line references.
+
+### 2.6 Lexical Analyzer Runtime Simulator (`LexicalAnalyzer`)
+Inside [`include/LexicalAnalyzer.h`](../include/LexicalAnalyzer.h):
+```cpp
+class LexicalAnalyzer {
+private:
+    DFA dfa;
+    string input;
+    size_t cursor = 0;
+    int currentLine = 1;
+    int currentColumn = 1;
+
+    SymbolTable symbolTable;
+    vector<string> errorLog;
+    ostream* errorStream;
+
+    void skipWhitespace();
+    void recoverFromError(char badChar, int line, int col);
+
+public:
+    LexicalAnalyzer(const DFA& minimizedDfa, const string& sourceCode, ostream* errStream = &cerr);
+
+    Token getNextToken();           // Phase 2 Parser interface
+    bool hasMoreTokens();
+    vector<Token> tokenizeAll();
+    const SymbolTable& getSymbolTable() const;
+};
+```
 
 ---
 
@@ -227,8 +289,26 @@ Implemented in [`DFAMinimizer`](../src/DFAMinimizer.cpp) using **partition refin
 4. **Build the minimal DFA**: one new state per final group, with the transitions and token class taken from any member of the group. States are numbered in **BFS order from the start state** (start state = 0, deterministic output on every run).
 * **Result on the assignment rules**: the 185-state DFA shrinks to a **44-state minimal DFA** (40 accepting states, all 18 token classes preserved). Minimizing the result a second time changes nothing, which confirms it is minimal.
 
-### 3.8 Simulation (Maximal Munch) (Step 4, planned)
-* **Simulation (Maximal Munch)**: Uses a forward pointer and backtrack buffer to find the longest matching prefix. If unmatched, an error recovery routine logs the unrecognized lexeme and advances by one character.
+### 3.8 Runtime Simulation Engine (Step 4)
+Implemented in [`LexicalAnalyzer`](../src/LexicalAnalyzer.cpp) and [`SymbolTable`](../src/SymbolTable.cpp):
+
+* **Maximal Munch (Longest Prefix Matching)**:
+  * The scanner reads the source code character by character from the current input cursor.
+  * It follows transitions in the minimal DFA while maintaining:
+    * `lastAcceptingState`: The most recent accepting DFA state reached.
+    * `lastAcceptingPos`: The cursor position when that accepting state was reached.
+  * When the scanner encounters a dead state (no valid transition for the current character), it **backtracks** to `lastAcceptingPos`.
+  * The lexeme is extracted as `input[startPos ... lastAcceptingPos]`, the winning token class is emitted, and the cursor is reset to `lastAcceptingPos`.
+  * If the token class is `"id"`, the lexeme is inserted into the `SymbolTable`.
+* **Whitespace Handling**: Spaces, tabs, and newlines between tokens are skipped while updating line and column counters.
+* **Error Recovery Routine**:
+  * If from `startPos` no accepting state was ever visited before reaching a dead state, an error recovery routine is triggered:
+    1. An informative diagnostic message is generated:
+       `Lexical Error at line L, column C: Unrecognized character 'X'` (or hex formatted `\xHH` if unprintable).
+    2. The illegal character is skipped (cursor advances by 1).
+    3. The scanner resumes looking for subsequent tokens without aborting execution.
+* **Phase 2 Parser Integration Interface**:
+  * The `LexicalAnalyzer` class exposes `Token getNextToken()` and `bool hasMoreTokens()` to allow the future Phase 2 syntax analyzer / parser to consume tokens lazily on demand.
 
 ---
 
@@ -309,9 +389,9 @@ They are generated by `DFA::saveTransitionTableText` and `DFA::saveTransitionTab
 ---
 
 ## 5. Section D: Resultant Stream of Tokens for Example Program
-*(This section will be populated upon completion of Step 4)*
 
 ### Test Program
+From Page 3 of the assignment specification (saved in [`tests/sample_program.java`](../tests/sample_program.java)):
 ```java
 int sum , count , pass , mnt; while (pass !=10)
 {
@@ -319,8 +399,45 @@ pass = pass + 1 ;
 }
 ```
 
-### Resultant Token Stream
-*(Generated token output one per line will be embedded here)*
+### Resultant Token Stream (`output_tokens.txt`)
+Emitted by `lexer_generator` (format: one recognized token class per line, matching Page 3 of the PDF):
+```text
+int
+id
+,
+id
+,
+id
+,
+id
+;
+while
+(
+id
+relop
+num
+)
+{
+id
+assign
+id
+addop
+num
+;
+}
+```
+
+### Resultant Symbol Table
+After scanning the test program, the Symbol Table records the following entries:
+
+| Identifier | Token Type | First Line | Occurrences |
+|---|---|---|---|
+| `sum` | `id` | 1 | 1 |
+| `count` | `id` | 1 | 1 |
+| `pass` | `id` | 1 | 4 |
+| `mnt` | `id` | 1 | 1 |
+
+*Note: `pass` appears in the initial declaration, in the `while` condition `(pass != 10)`, on the LHS of assignment `pass =`, and inside the expression `pass + 1`, correctly totaling 4 occurrences.*
 
 ---
 
@@ -337,225 +454,3 @@ pass = pass + 1 ;
 9. **Table Format**: The assignment lets us choose the output format of the transition table, so the minimal DFA is emitted as an aligned text matrix and as a CSV file (rows = states, columns = alphabet characters).
 
 ---
-
-## 7. Step-by-Step Implementation Status & Test Verification
-
-| Step | Component | Status | Verification Summary |
-|---|---|---|---|
-| **Step 0** | **Rules Parser & Regex Preprocessor** | **COMPLETED** | Tested on all 18 language rules; macro expansion, escape handling, concatenation, and Shunting-Yard verified. |
-| **Step 1** | **Thompson's NFA & Combined NFA** | **COMPLETED** | Stack-based Thompson's construction verified; Master start state $S_0$ combines 18 sub-NFAs (733 states, 77 alphabet symbols, 18 accepting states). |
-| **Step 2** | **Subset Construction (NFA $\to$ DFA)** | **COMPLETED** | $\epsilon$-closure, `move` and priority resolution verified; the 733-state NFA becomes a 185-state DFA, which agrees with direct NFA simulation on 20,000 random strings. |
-| **Step 3** | **DFA Minimization** | **COMPLETED** | Partition refinement preserving token classes; the DFA shrinks from 185 to 44 states, behaves identically on 30,000 random strings, and is already minimal (re-minimizing changes nothing). |
-| **Step 4** | **Simulator & Symbol Table** | *Planned* | Maximal munch, token stream emission, error recovery, `getNextToken()` API. |
-| **Step 5** | **Testing on Sample Program** | *Planned* | Verification against expected sample output. |
-| **Step 6** | **Bonus Task (Flex Report)** | *Planned* | Flex implementation with comparison screenshots. |
-
-### Step 3 Verification Output:
-```text
-====================================================
-        LEXICAL ANALYZER GENERATOR - STEP 3 TESTS   
-====================================================
-
---- TEST 1: MINIMIZATION ON A HAND-BUILT DFA ---
- [PASS] equivalent states 1 and 2 merged (4 -> 3 states).
- [PASS] minimized DFA accepts the same language.
- [PASS] accepting states of different token classes stay separate.
- [PASS] unreachable states are removed.
-
---- TEST 2: MINIMIZATION ON THE ASSIGNMENT RULES ---
-Combined NFA states : 733
-DFA states          : 185
-Minimal DFA states  : 44
-DFA Summary:
-  Total States: 44
-  Start State:  0
-  Alphabet Size: 77 characters
-  Accepting States (40):
-    State    2 -> Token: (          (Priority 8)
-    State    3 -> Token: )          (Priority 9)
-    State    4 -> Token: mulop      (Priority 17)
-    State    5 -> Token: addop      (Priority 16)
-    State    6 -> Token: ,          (Priority 7)
-    State    7 -> Token: num        (Priority 13)
-    State    8 -> Token: ;          (Priority 6)
-    State    9 -> Token: relop      (Priority 14)
-    State   10 -> Token: assign     (Priority 15)
-    State   11 -> Token: id         (Priority 12)
-    State   12 -> Token: id         (Priority 12)
-    State   13 -> Token: id         (Priority 12)
-    State   14 -> Token: id         (Priority 12)
-    State   15 -> Token: id         (Priority 12)
-    State   16 -> Token: id         (Priority 12)
-    State   17 -> Token: {          (Priority 10)
-    State   18 -> Token: }          (Priority 11)
-    State   19 -> Token: relop      (Priority 14)
-    State   21 -> Token: id         (Priority 12)
-    State   22 -> Token: id         (Priority 12)
-    State   23 -> Token: id         (Priority 12)
-    State   24 -> Token: if         (Priority 3)
-    State   25 -> Token: id         (Priority 12)
-    State   26 -> Token: id         (Priority 12)
-    State   27 -> Token: num        (Priority 13)
-    State   28 -> Token: id         (Priority 12)
-    State   29 -> Token: id         (Priority 12)
-    State   30 -> Token: id         (Priority 12)
-    State   31 -> Token: int        (Priority 1)
-    State   32 -> Token: id         (Priority 12)
-    State   34 -> Token: id         (Priority 12)
-    State   35 -> Token: else       (Priority 4)
-    State   36 -> Token: id         (Priority 12)
-    State   37 -> Token: id         (Priority 12)
-    State   38 -> Token: num        (Priority 13)
-    State   39 -> Token: id         (Priority 12)
-    State   40 -> Token: float      (Priority 2)
-    State   41 -> Token: while      (Priority 5)
-    State   42 -> Token: id         (Priority 12)
-    State   43 -> Token: boolean    (Priority 0)
- [PASS] minimal DFA is not larger than the DFA; start state is 0.
- [PASS] all 18 token classes are still present.
- [PASS] minimizing again does not shrink it (already minimal).
- [PASS] minimal DFA behaves exactly like the DFA on 30000 random strings.
- [PASS] spot checks (while / whilex / 12.5E3 / != / pass).
- [PASS] transition table written to minimal_dfa_table.txt and minimal_dfa_table.csv.
-
---- MINIMAL DFA TRANSITION TABLE ---
-(the 44 x 77 matrix is printed here by the program; see Section C and minimal_dfa_table.txt / .csv)
-
-ALL STEP 3 TESTS PASSED SUCCESSFULLY!
-====================================================
-```
-
-### Step 2 Verification Output:
-```text
-====================================================
-        LEXICAL ANALYZER GENERATOR - STEP 2 TESTS   
-====================================================
-
---- TEST 1: EPSILON-CLOSURE & MOVE ---
- [PASS] epsilon-closure({0}) = {0,1,2}.
- [PASS] move({0,1,2}, 'a') = {3,4}.
- [PASS] move on a character with no transition is empty.
- [PASS] epsilon-closure terminates on epsilon cycles.
-
---- TEST 2: SUBSET CONSTRUCTION ON SMALL RULES ---
- [PASS] "if" -> keyword 'if' (higher priority wins over 'id').
- [PASS] "i", "iff", "abc" -> 'id'.
- [PASS] empty string and non-matching input are rejected.
- [PASS] every transition points to a valid DFA state.
- [PASS] accepting state for 'if' has priority 0.
-
---- TEST 3: SUBSET CONSTRUCTION ON THE ASSIGNMENT RULES ---
-Combined NFA states: 733
-DFA Summary:
-  Total States: 185
-  Start State:  0
-  Alphabet Size: 77 characters
-  Accepting States (181):
-    ... (all 181 accepting DFA states are listed by the program; omitted here for brevity)
- [PASS] DFA built; start state is 0; alphabet equals the NFA alphabet.
- [PASS] 44 token / non-token strings classified correctly.
- [PASS] DFA agrees with direct NFA simulation on 20000 random strings.
- [PASS] all accepting DFA states carry valid token names.
-
-ALL STEP 2 TESTS PASSED SUCCESSFULLY!
-====================================================
-```
-
-### Step 1 Verification Output:
-```text
-====================================================
-        LEXICAL ANALYZER GENERATOR - STEP 1 TESTS   
-====================================================
-
---- TEST 1: THOMPSON'S PRIMITIVES ---
- [PASS] createLiteral('x') creates 2 states with 'x' transition.
- [PASS] createLambda() creates 2 states with epsilon transition.
- [PASS] createConcat('a', 'b') connects fa.accept -> fb.start.
- [PASS] createUnion('a', 'b') correctly branches and joins via epsilon.
- [PASS] createStar('a') includes loopback and bypass epsilon transitions.
- [PASS] createPlus('a') includes loopback and NO bypass.
-
---- TEST 2: COMBINED MASTER NFA FROM RULES ---
-Loaded 18 token rules from tests/lexical_rules.txt
-
-Combined NFA Statistics:
-  Total States: 733
-  Start State:  0
-  Alphabet Size: 77 unique characters
-  Alphabet: [ ! ( ) * + , - . / 0 1 2 3 4 5 6 7 8 9 ; < = > A B C D E F G H I J K L M N O P Q R S T U V W X Y Z a b c d e f g h i j k l m n o p q r s t u v w x y z { } ]
- [PASS] Master start state (ID 0) has exactly 18 epsilon transitions (one per token rule).
- [PASS] Total accepting states count (18) matches rule count (18).
-
-Accepting States in Combined NFA:
-  State   14 -> boolean    (Priority 0)
-  State 20   -> int        (Priority 1)
-  State 30   -> float      (Priority 2)
-  State 34   -> if         (Priority 3)
-  State 42   -> else       (Priority 4)
-  State 52   -> while      (Priority 5)
-  State 54   -> ;          (Priority 6)
-  State 56   -> ,          (Priority 7)
-  State 58   -> (          (Priority 8)
-  State 60   -> )          (Priority 9)
-  State 62   -> {          (Priority 10)
-  State 64   -> }          (Priority 11)
-  State 518  -> id         (Priority 12)
-  State 688  -> num        (Priority 13)
-  State 718  -> relop      (Priority 14)
-  State 720  -> assign     (Priority 15)
-  State 726  -> addop      (Priority 16)
-  State 732  -> mulop      (Priority 17)
- [PASS] All 18 distinct tokens have designated accepting states.
- [PASS] Keywords, identifiers, numbers, operators, and punctuations all verified.
-
-ALL STEP 1 TESTS PASSED SUCCESSFULLY!
-====================================================
-```
-
-### Step 0 Verification Output:
-```text
-====================================================
-        LEXICAL ANALYZER GENERATOR - STEP 0 TESTS   
-====================================================
-SUCCESS: Successfully parsed 18 token rules.
-
---- REGULAR DEFINITIONS STORED ---
-digit      = (0|1|2|3|4|5|6|7|8|9)
-digits     = ((0|1|2|3|4|5|6|7|8|9))+
-letter     = (a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y...
-
---- PARSED TOKEN RULES (Priority Order) ---
-Prio  Token Name  Raw Regex                Postfix Preview
---------------------------------------------------------------------------------
-0     boolean     boolean                  b o . o . l . e . a . n .
-1     int         int                      i n . t .
-2     float       float                    f l . o . a . t .
-3     if          if                       i f .
-4     else        else                     e l . s . e .
-5     while       while                    w h . i . l . e .
-6     ;           ;                        ;
-7     ,           ,                        ,
-8     (           (                        (
-9     )           )                        )
-10    {           {                        {
-11    }           }                        }
-12    id          letter (letter|digit)*   a b | c | d | e | f | g | h | i | j | k ...
-13    num         digit+ | digit+ . digi...0 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | + ...
-14    relop       \=\= | !\= | > | >\= |...= = . ! = . | > | > = . | < | < = . |
-15    assign      =                        =
-16    addop       \+ | \-                  + - |
-17    mulop       \* | /                   * / |
-
---- RUNNING VALIDATION CHECKS ---
- [PASS] Keywords are reserved and assigned highest priorities (0 to 5).
- [PASS] Punctuation symbols (;, ,, (, ), {, }) extracted correctly.
- [PASS] 'id' properly expanded macros and converted to postfix ending in CONCAT.
- [PASS] 'num' contains literal '.' decimal point and '\L' (Lambda/epsilon).
- [PASS] 'relop' handles escaped characters like \=\= and !\=.
-
---- UNIT TESTS: SHUNTING-YARD ALGORITHM ---
- [PASS] Postfix for 'a (b|c)*' is exactly 'a b c | * .'
-
-ALL STEP 0 TESTS PASSED SUCCESSFULLY!
-====================================================
-```
