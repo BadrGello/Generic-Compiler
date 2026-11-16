@@ -13,7 +13,8 @@ DFA DFAMinimizer::minimize(const DFA& dfa) {
     const int n = static_cast<int>(dfa.states.size());
     vector<char> symbols(dfa.alphabet.begin(), dfa.alphabet.end());
 
-    // 1. Keep only states reachable from the start state
+    //! 1. Keep only states reachable from the start state
+
     vector<bool> reachable(n, false);
     {
         queue<int> q;
@@ -31,8 +32,9 @@ DFA DFAMinimizer::minimize(const DFA& dfa) {
         }
     }
 
-    // 2. Initial partition: non-accepting | accepting grouped by token class.
-    //    block[s] = block index of state s (-1 for unreachable states)
+    //! 2. Initial partition: non-accepting | accepting grouped by token class.
+    //!    block[s] = block index of state s (-1 for unreachable states)
+
     vector<int> block(n, -1);
     {
         map<pair<bool, string>, int> initial;
@@ -49,15 +51,16 @@ DFA DFAMinimizer::minimize(const DFA& dfa) {
         }
     }
 
-    // 3. Refine until no block splits any more.
-    //    Signature of a state = (its block, block of the target for every symbol).
-    //    Missing transition -> -1 (implicit dead state, which is its own class).
+    //! 3. Refine until no block splits any more.
+    //!    Signature of a state = (its block, block of the target for every symbol).
+    //!    Missing transition -> -1 (implicit dead state, which is its own class).
+
     int numBlocks = 0;
     for (int s = 0; s < n; s++) numBlocks = max(numBlocks, block[s] + 1);
 
     while (true) {
-        map<vector<int>, int> signatureToBlock;
-        vector<int> newBlock(n, -1);
+        map<vector<int>, int> signatureToBlock;      //? signature -> new block index
+        vector<int> newBlock(n, -1);                 //? new block index for each state
 
         for (int s = 0; s < n; s++) {
             if (!reachable[s]) continue;
@@ -78,14 +81,14 @@ DFA DFAMinimizer::minimize(const DFA& dfa) {
 
         int newCount = static_cast<int>(signatureToBlock.size());
         block = newBlock;
-        if (newCount == numBlocks) break; // stable: no block was split
+        if (newCount == numBlocks) break; //! stable: no block was split
         numBlocks = newCount;
     }
 
-    // 4. Build the minimized DFA, numbering states in BFS order from the start state
-    //    (deterministic output; start state becomes state 0).
-    vector<int> blockToNew(numBlocks, -1);
-    vector<int> representative(numBlocks, -1); // one original state per block
+    //! 4. Build the minimized DFA, numbering states in BFS order from the start state
+    //!    (deterministic output; start state becomes state 0).
+    vector<int> blockToNew(numBlocks, -1);       //? new state ID for each block (-1 = not yet created)
+    vector<int> representative(numBlocks, -1);  //? one original state per block
     for (int s = 0; s < n; s++) {
         if (reachable[s] && representative[block[s]] == -1) representative[block[s]] = s;
     }
