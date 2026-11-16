@@ -8,7 +8,7 @@ using namespace std;
 
 int DFA::addState() {
     int newId = static_cast<int>(states.size());
-    states.emplace_back(newId);
+    states.emplace_back(newId);                 //? Add a new state with the next available ID
     return newId;
 }
 
@@ -75,7 +75,6 @@ void DFA::printSummary() const {
     }
 }
 
-// Column header for a character (non-printable / special ones are made readable)
 static string charLabel(char c) {
     if (c == ',') return "','";   // keep commas distinguishable in CSV
     if (c == ' ') return "' '";
